@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For SystemNavigator
 import 'chat_screen.dart'; // Import the chat screen file
+import 'doc_analysis.dart'; // Import the document analysis screen
 
 void main() {
   runApp(const LegalEaseApp());
@@ -28,6 +29,37 @@ class LegalEaseApp extends StatelessWidget {
 class LegalEaseHomePage extends StatelessWidget {
   const LegalEaseHomePage({super.key});
 
+  // Function to show exit confirmation dialog
+  Future<void> _showExitDialog(BuildContext context) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // User must tap a button to dismiss dialog
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Exit'),
+          content: const Text('Are you sure you want to exit?'),
+          actions: <Widget>[
+            TextButton(
+              child:
+                  const Text('No', style: TextStyle(color: Color(0xFF2F6167))),
+              onPressed: () {
+                Navigator.of(context).pop(); // Dismiss the dialog
+              },
+            ),
+            TextButton(
+              child:
+                  const Text('Yes', style: TextStyle(color: Color(0xFFE15A5A))),
+              onPressed: () {
+                Navigator.of(context).pop(); // Dismiss the dialog
+                SystemNavigator.pop(); // Exit the app
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,14 +82,15 @@ class LegalEaseHomePage extends StatelessWidget {
                 ),
               ),
               Positioned(
-                left: 10,
-                top: 80,
+                left: 20,
+                top: MediaQuery.of(context).size.height *
+                    0.08, // Responsive positioning
                 child: const Text(
                   'LegalEase',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 50,
+                    fontSize: 42, // Slightly smaller to prevent overlap
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -66,8 +99,10 @@ class LegalEaseHomePage extends StatelessWidget {
                 right: 20,
                 top: 40,
                 child: Container(
-                  width: 120,
-                  height: 120,
+                  width: MediaQuery.of(context).size.width *
+                      0.28, // Responsive sizing
+                  height: MediaQuery.of(context).size.width *
+                      0.28, // Keep it circular
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
@@ -88,7 +123,7 @@ class LegalEaseHomePage extends StatelessWidget {
                 ),
               ),
               Positioned(
-                left: 9.5,
+                left: 20,
                 right: 20,
                 bottom: 20,
                 child: const Text(
@@ -96,7 +131,7 @@ class LegalEaseHomePage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 16, // Slightly smaller for better fit
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -115,7 +150,8 @@ class LegalEaseHomePage extends StatelessWidget {
                       // Navigate to the ChatScreen when Legal Advice button is clicked
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const ChatScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const ChatScreen()),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -132,7 +168,14 @@ class LegalEaseHomePage extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigate to the DocumentAnalysisScreen when Document Analysis button is clicked
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const DocAnalysisScreen()),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2F6167),
                       foregroundColor: Colors.white,
@@ -147,7 +190,7 @@ class LegalEaseHomePage extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Info card
           Padding(
             padding: const EdgeInsets.all(20),
@@ -200,47 +243,29 @@ class LegalEaseHomePage extends StatelessWidget {
               ),
             ),
           ),
-          
+
           const Spacer(),
-          
-          // Bottom navigation buttons
+
+          // Exit button (centered instead of having two buttons)
           Padding(
             padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2F6167),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                    ),
-                    child: const Text('Back'),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  // Show exit confirmation dialog
+                  _showExitDialog(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE15A5A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Exit the app
-                      SystemNavigator.pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE15A5A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                    ),
-                    child: const Text('Exit'),
-                  ),
-                ),
-              ],
+                child: const Text('Exit'),
+              ),
             ),
           ),
         ],

@@ -60,6 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF18403F),
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'LegalEase',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
