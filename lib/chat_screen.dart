@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -11,14 +11,16 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
-  List<ChatMessage> _messages = [];
+  final List<ChatMessage> _messages = [];
   bool _isLoading = false;
-  final String apiUrl = "https://legal-ai-api-6g2i.onrender.com";
+
+  // ✅ Replace with your correct API endpoint
+  final String apiUrl = "https://legal-ai-api-6g2i.onrender.com/chatbot";
 
   Future<void> _sendMessage() async {
-    if (_controller.text.isEmpty) return;
+    if (_controller.text.trim().isEmpty) return; // ✅ Prevent sending empty messages
 
-    String userMessage = _controller.text;
+    String userMessage = _controller.text.trim();
     setState(() {
       _messages.add(ChatMessage(text: userMessage, isUser: true));
       _controller.clear();
@@ -29,22 +31,22 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"question": userMessage, "context": "Relevant legal sections..."}),
+        body: jsonEncode({"question": userMessage}), // ✅ Removed unnecessary "context" field
       );
 
       if (response.statusCode == 200) {
-        String botResponse = jsonDecode(response.body)["answer"];
+        final data = jsonDecode(response.body);
         setState(() {
-          _messages.add(ChatMessage(text: botResponse, isUser: false));
+          _messages.add(ChatMessage(text: data["answer"] ?? "No response received.", isUser: false));
         });
       } else {
         setState(() {
-          _messages.add(ChatMessage(text: "Error: Unable to fetch response", isUser: false));
+          _messages.add(ChatMessage(text: "⚠ Error: Server responded with status ${response.statusCode}", isUser: false));
         });
       }
     } catch (e) {
       setState(() {
-        _messages.add(ChatMessage(text: "Error: $e", isUser: false));
+        _messages.add(ChatMessage(text: "⚠ Error: $e", isUser: false));
       });
     }
 
@@ -72,15 +74,14 @@ class _ChatScreenState extends State<ChatScreen> {
             child: ListView.builder(
               padding: const EdgeInsets.all(8.0),
               itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                return _buildMessage(_messages[index]);
-              },
+              itemBuilder: (context, index) => _buildMessage(_messages[index]),
             ),
           ),
-          if (_isLoading) const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: CircularProgressIndicator(),
-          ),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
           _buildBottomBar(),
         ],
       ),
@@ -89,15 +90,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessage(ChatMessage message) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
             backgroundColor: message.isUser ? const Color(0xFF6C63FF) : const Color(0xFF18403F),
             radius: 16,
-            child: message.isUser ? const Text("?", style: TextStyle(color: Colors.white)) :
-            const Icon(Icons.balance, color: Colors.white, size: 16),
+            child: message.isUser
+                ? const Icon(Icons.person, color: Colors.white, size: 18)
+                : const Icon(Icons.balance, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -120,7 +122,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildBottomBar() {
     return Container(
-      decoration: BoxDecoration(color: const Color(0xFF18403F), border: Border(top: BorderSide(color: const Color(0xFF0C2E2F), width: 1))),
+      decoration: BoxDecoration(
+        color: const Color(0xFF18403F),
+        border: Border(top: BorderSide(color: const Color(0xFF0C2E2F), width: 1)),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Row(
         children: [

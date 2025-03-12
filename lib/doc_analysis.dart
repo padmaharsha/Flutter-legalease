@@ -1,4 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class DocAnalysisScreen extends StatefulWidget {
   const DocAnalysisScreen({Key? key}) : super(key: key);
@@ -10,6 +14,49 @@ class DocAnalysisScreen extends StatefulWidget {
 class _DocAnalysisScreenState extends State<DocAnalysisScreen> {
   String _fileName = "No file selected";
   bool _fileSelected = false;
+  File? _selectedFile;
+  String _analysisResult = "";
+
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      setState(() {
+        _selectedFile = File(result.files.single.path!);
+        _fileName = result.files.single.name;
+        _fileSelected = true;
+      });
+    }
+  }
+
+  Future<void> _analyzeDocument() async {
+    if (_selectedFile == null) return;
+
+    var uri = Uri.parse("http://127.0.0.1:5000/analyze");
+    var request = http.MultipartRequest('POST', uri)
+      ..files.add(await http.MultipartFile.fromPath('file', _selectedFile!.path));
+
+    try {
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        var responseData = await response.stream.bytesToString();
+        var jsonResponse = jsonDecode(responseData);
+
+        setState(() {
+          _analysisResult = jsonResponse['summary'] ?? 'No summary available';
+        });
+      } else {
+        setState(() {
+          _analysisResult = "Error: ${response.statusCode}";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _analysisResult = "Error: $e";
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +64,6 @@ class _DocAnalysisScreenState extends State<DocAnalysisScreen> {
       backgroundColor: const Color(0xFF1D4D4F),
       appBar: AppBar(
         backgroundColor: const Color(0xFF18403F),
-        elevation: 0,
         title: const Text(
           'Document Analysis',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
@@ -32,11 +78,9 @@ class _DocAnalysisScreenState extends State<DocAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Upload legal document",
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const Text("Upload Legal Document", style: TextStyle(color: Colors.white, fontSize: 18)),
             const SizedBox(height: 16),
+
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -52,264 +96,45 @@ class _DocAnalysisScreenState extends State<DocAnalysisScreen> {
                     color: const Color(0xFF6C63FF),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    _fileName,
-                    style: const TextStyle(color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
+
+                  Text(_fileName, style: const TextStyle(color: Colors.white)),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6C63FF),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: () {
-                          // No action needed, just UI for now
-                        },
-                        icon: const Icon(Icons.upload),
-                        label: const Text("Select File"),
-                      ),
-                      if (_fileSelected) ...[
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF18403F),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () {
-                            // Simply show a dialog to simulate PDF viewing
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: Text("Viewing $_fileName"),
-                                content: const Text("PDF viewer would appear here."),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text("Close"),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.visibility),
-                          label: const Text("View"),
-                        ),
-                      ],
-                    ],
+
+                  ElevatedButton.icon(
+                    onPressed: _pickFile,
+                    icon: const Icon(Icons.upload),
+                    label: const Text("Select File"),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF)),
                   ),
-                  if (_fileSelected) ...[
-                    const SizedBox(height: 16),
+
+                  if (_fileSelected)
                     ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF18403F),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => const AlertDialog(
-                            title: Text("Analysis Results"),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: Icon(Icons.check_circle, color: Colors.green),
-                                  title: Text("Contract Type: Employment"),
-                                ),
-                                ListTile(
-                                  leading: Icon(Icons.warning, color: Colors.orange),
-                                  title: Text("Found 2 potential issues"),
-                                ),
-                                ListTile(
-                                  leading: Icon(Icons.info, color: Colors.blue),
-                                  title: Text("3 key clauses identified"),
-                                ),
-                              ],
-                            ),
-                            actions: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  Chip(label: Text("Chat")),
-                                  Chip(label: Text("Details")),
-                                  Chip(label: Text("Export")),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                      onPressed: _analyzeDocument,
                       icon: const Icon(Icons.analytics),
                       label: const Text("Analyze Document"),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF18403F)),
                     ),
-                  ],
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
-            if (_fileSelected) ...[
-              const Text(
-                "Document Details",
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
+if (_analysisResult.isNotEmpty)
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2B3F45),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Filename: $_fileName",
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "Size: 245.32 KB",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "Ready for analysis. Click the Analyze Document button above.",
-                        style: TextStyle(color: Color(0xFF8B9A9A)),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        "Chat History",
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1D4D4F),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Column(
-                            children: [
-                              ChatBubble(
-                                message: "I've analyzed your document. It appears to be an employment contract.",
-                                isUser: false,
-                              ),
-                              SizedBox(height: 12),
-                              ChatBubble(
-                                message: "Can you highlight any potential issues?",
-                                isUser: true,
-                              ),
-                              SizedBox(height: 12),
-                              ChatBubble(
-                                message: "I found a non-compete clause that may be overly restrictive. Section 8.2 has unclear termination terms.",
-                                isUser: false,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              decoration: InputDecoration(
-                                hintText: "Ask about your document...",
-                                hintStyle: const TextStyle(color: Color(0xFF8B9A9A)),
-                                filled: true,
-                                fillColor: const Color(0xFF1D4D4F),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                              ),
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          CircleAvatar(
-                            backgroundColor: const Color(0xFF6C63FF),
-                            child: IconButton(
-                              icon: const Icon(Icons.send, color: Colors.white),
-                              onPressed: () {},
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                child: SingleChildScrollView(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2B3F45),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(_analysisResult, style: const TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
-            ],
           ],
         ),
       ),
-    );
-  }
-}
-
-class ChatBubble extends StatelessWidget {
-  final String message;
-  final bool isUser;
-
-  const ChatBubble({
-    Key? key,
-    required this.message,
-    required this.isUser,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-      children: [
-        if (!isUser)
-          const CircleAvatar(
-            backgroundColor: Color(0xFF6C63FF),
-            radius: 16,
-            child: Icon(Icons.smart_toy, size: 16, color: Colors.white),
-          ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isUser ? const Color(0xFF6C63FF) : const Color(0xFF2B3F45),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        if (isUser)
-          const CircleAvatar(
-            backgroundColor: Color(0xFF18403F),
-            radius: 16,
-            child: Icon(Icons.person, size: 16, color: Colors.white),
-          ),
-      ],
     );
   }
 }
