@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -14,48 +13,73 @@ class DocAnalysisScreen extends StatefulWidget {
 class _DocAnalysisScreenState extends State<DocAnalysisScreen> {
   String _fileName = "No file selected";
   bool _fileSelected = false;
-  File? _selectedFile;
+  bool _isLoading = false;
+  PlatformFile? _selectedFile;
   String _analysisResult = "";
 
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
+  // Function to pick a document
+  Future<void> _pickDocument() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'docx', 'txt'],
+      withData: true, // Ensures bytes for web compatibility
+    );
 
     if (result != null) {
       setState(() {
-        _selectedFile = File(result.files.single.path!);
-        _fileName = result.files.single.name;
         _fileSelected = true;
+        _fileName = result.files.single.name;
+        _selectedFile = result.files.single;
       });
     }
   }
 
+  // Function to send the document to the Flask backend
   Future<void> _analyzeDocument() async {
-    if (_selectedFile == null) return;
+    if (_selectedFile == null || _selectedFile!.bytes == null) {
+      _showError("No valid file selected.");
+      return;
+    }
 
-    var uri = Uri.parse("http://127.0.0.1:5000/analyze");
-    var request = http.MultipartRequest('POST', uri)
-      ..files.add(await http.MultipartFile.fromPath('file', _selectedFile!.path));
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://localhost:5000/analyze'), // Updated endpoint
+      );
+
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        _selectedFile!.bytes!,
+        filename: _selectedFile!.name,
+      ));
+
       var response = await request.send();
 
       if (response.statusCode == 200) {
-        var responseData = await response.stream.bytesToString();
-        var jsonResponse = jsonDecode(responseData);
-
+        var jsonResponse = jsonDecode(await response.stream.bytesToString());
         setState(() {
-          _analysisResult = jsonResponse['summary'] ?? 'No summary available';
+          _analysisResult = jsonResponse['summary'] ?? "No summary available.";
         });
       } else {
-        setState(() {
-          _analysisResult = "Error: ${response.statusCode}";
-        });
+        _showError('Failed to analyze document. Try again.');
       }
     } catch (e) {
+      _showError('Error: $e');
+    } finally {
       setState(() {
-        _analysisResult = "Error: $e";
+        _isLoading = false;
       });
     }
+  }
+
+  // Function to display errors
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -66,7 +90,11 @@ class _DocAnalysisScreenState extends State<DocAnalysisScreen> {
         backgroundColor: const Color(0xFF18403F),
         title: const Text(
           'Document Analysis',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -78,9 +106,11 @@ class _DocAnalysisScreenState extends State<DocAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Upload Legal Document", style: TextStyle(color: Colors.white, fontSize: 18)),
+            const Text(
+              "Upload Legal Document",
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
             const SizedBox(height: 16),
-
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -96,30 +126,31 @@ class _DocAnalysisScreenState extends State<DocAnalysisScreen> {
                     color: const Color(0xFF6C63FF),
                   ),
                   const SizedBox(height: 16),
-
                   Text(_fileName, style: const TextStyle(color: Colors.white)),
                   const SizedBox(height: 16),
-
                   ElevatedButton.icon(
-                    onPressed: _pickFile,
+                    onPressed: _pickDocument,
                     icon: const Icon(Icons.upload),
                     label: const Text("Select File"),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6C63FF),
+                    ),
                   ),
-
-                  if (_fileSelected)
+                  if (_fileSelected && !_isLoading)
                     ElevatedButton.icon(
                       onPressed: _analyzeDocument,
                       icon: const Icon(Icons.analytics),
                       label: const Text("Analyze Document"),
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF18403F)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF18403F),
+                      ),
                     ),
+                  if (_isLoading) const CircularProgressIndicator(),
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-if (_analysisResult.isNotEmpty)
+            if (_analysisResult.isNotEmpty)
               Expanded(
                 child: SingleChildScrollView(
                   child: Container(
@@ -128,7 +159,10 @@ if (_analysisResult.isNotEmpty)
                       color: const Color(0xFF2B3F45),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(_analysisResult, style: const TextStyle(color: Colors.white)),
+                    child: Text(
+                      _analysisResult,
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ),
