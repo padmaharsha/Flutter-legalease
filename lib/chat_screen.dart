@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart'; 
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import 'api_service.dart'; // ✅ Import API service
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
@@ -14,9 +13,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
 
-  // ✅ Replace with your correct API endpoint
-  final String apiUrl = "https://legal-ai-api-6g2i.onrender.com/chatbot";
-
   Future<void> _sendMessage() async {
     if (_controller.text.trim().isEmpty) return; // ✅ Prevent sending empty messages
 
@@ -28,22 +24,10 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"question": userMessage}), // ✅ Removed unnecessary "context" field
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _messages.add(ChatMessage(text: data["answer"] ?? "No response received.", isUser: false));
-        });
-      } else {
-        setState(() {
-          _messages.add(ChatMessage(text: "⚠ Error: Server responded with status ${response.statusCode}", isUser: false));
-        });
-      }
+      String botResponse = await ApiService().getChatbotResponse(userMessage);
+      setState(() {
+        _messages.add(ChatMessage(text: botResponse, isUser: false));
+      });
     } catch (e) {
       setState(() {
         _messages.add(ChatMessage(text: "⚠ Error: $e", isUser: false));
